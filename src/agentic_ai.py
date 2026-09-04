@@ -76,6 +76,20 @@ def generate_agentic_prompt(report, market_info):
     Constructs the prompt for AI Agent matching Day3_agentic_etl_workshop.ipynb
     and Airflow_notification.json.
     """
+    comm_stats = report.get("commodity_stats", {})
+    total_comm = comm_stats.get("total_commodities", 71)
+    new_comm_list = comm_stats.get("new_commodities", [])
+    new_comm_count = comm_stats.get("new_commodities_count", 0)
+
+    if new_comm_count > 0:
+        comm_alert_text = (
+            f"• จำนวนสินค้าทั้งหมด: {total_comm} รายการ (⚠️ พบสินค้าใหม่เพิ่มเข้ามา {new_comm_count} รายการ!)\n"
+            f"• รายการสินค้าใหม่: {', '.join(new_comm_list)}\n"
+            f"• คำแนะนำ: ต้องอัปเดต Metadata / Category Mapping ในตาราง dim_commodity"
+        )
+    else:
+        comm_alert_text = f"• จำนวนสินค้าทั้งหมด: {total_comm} รายการ (ตรงตามเกณฑ์มาตรฐาน 71 รายการครบถ้วน)"
+
     prompt = f"""
 You are an Executive Data Quality & Incident Responder for an Enterprise ETL Pipeline.
 Analyze this Data Quality Report and create an executive-ready LINE message in Thai.
@@ -98,6 +112,9 @@ Instructions:
 • ระดับความเสี่ยง: {'🔴 HIGH (ต้องตรวจสอบ)' if report.get('human_review_required') else '🟢 NORMAL (ข้อมูลสมบูรณ์)'}
 • จำนวนข้อมูลที่ถูกต้อง: {round((report.get('valid_rows', 0) / max(report.get('total_rows', 1), 1)) * 100)}% (ผ่าน {report.get('valid_rows', 0):,} / ทั้งหมด {report.get('total_rows', 0):,} แถว)
 • สถานะการเผยแพร่: {'✅ พร้อมเผยแพร่ขึ้น Production Database' if report.get('safe_to_publish') else '⚠️ ระงับการเผยแพร่ชั่วคราว (Hold)'}
+
+📦 การตรวจสอบจำนวนรายการสินค้า (Commodity Schema Check):
+{comm_alert_text}
 
 📈 สรุปความเคลื่อนไหวราคาสินค้าโภคภัณฑ์สำคัญ:
 • สินค้าที่ราคาพุ่งสูงขึ้น: {', '.join([f"{g['Commodity']} (+{g['pct_change']}%)" for g in market_info.get('top_gainers', [])])}

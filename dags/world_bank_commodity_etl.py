@@ -194,6 +194,15 @@ def transform_data():
     crit = ["is_duplicate", "invalid_date", "missing_commodity", "unknown_group", "negative_price"]
     flags_df["is_valid"] = ~flags_df[crit].any(axis=1)
 
+    # Commodity Drift & Count Check (Baseline 71 items)
+    current_commodities = set(cleaned_commodities)
+    baseline_count = 71
+    new_commodities = sorted(list(current_commodities - set(groups.keys()))) if groups else []
+    # If all 71 matched known baseline
+    if len(current_commodities) <= baseline_count:
+        new_commodities = []
+    has_new = len(new_commodities) > 0
+
     total_rows = int(len(flags_df))
     valid_rows = int(flags_df["is_valid"].sum())
     rejected_rows = total_rows - valid_rows
@@ -204,6 +213,12 @@ def transform_data():
         "total_rows": total_rows,
         "valid_rows": valid_rows,
         "rejected_rows": rejected_rows,
+        "commodity_stats": {
+            "total_commodities": len(current_commodities),
+            "expected_commodities": baseline_count,
+            "new_commodities_count": len(new_commodities),
+            "new_commodities": new_commodities
+        },
         "error_breakdown": {
             "is_duplicate": int(flags_df["is_duplicate"].sum()),
             "invalid_date": int(flags_df["invalid_date"].sum()),
@@ -211,10 +226,11 @@ def transform_data():
             "unknown_group": int(flags_df["unknown_group"].sum()),
             "missing_price": int(flags_df["missing_price"].sum()),
             "negative_price": int(flags_df["negative_price"].sum()),
-            "outlier_price": int(flags_df["outlier_price"].sum())
+            "outlier_price": int(flags_df["outlier_price"].sum()),
+            "new_commodities_detected": len(new_commodities)
         },
-        "severity": "HIGH" if rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0 else "LOW",
-        "human_review_required": rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0,
+        "severity": "HIGH" if rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0 else ("MEDIUM" if has_new else "LOW"),
+        "human_review_required": rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0 or has_new,
         "safe_to_publish": valid_rows > 0 and int(flags_df["negative_price"].sum()) == 0
     }
 
@@ -222,7 +238,7 @@ def transform_data():
     with open(QUALITY_REPORT_PATH, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Transformation finished: {len(clean_df)} records created. Quality: {valid_rows}/{total_rows} valid.")
+    print(f"✅ Transformation finished: {len(clean_df)} records created. Commodities: {len(current_commodities)} (New: {len(new_commodities)}). Quality: {valid_rows}/{total_rows} valid.")
 
 
 # ==============================================================================

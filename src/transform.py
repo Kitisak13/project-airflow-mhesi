@@ -137,11 +137,23 @@ def clean_and_transform(excel_path=DEFAULT_RAW_EXCEL):
     flags_df.to_csv(FLAGS_OUTPUT_CSV, index=False)
 
     # -------------------------------------------------------------
+    # Commodity Count & Schema Drift Verification (Baseline: 71 items)
+    # -------------------------------------------------------------
+    current_commodities = set(cleaned_commodities)
+    known_commodities = set(df_meta["Commodity"].tolist()) if "Commodity" in df_meta.columns else set()
+    new_commodities = sorted(list(current_commodities - known_commodities))
+    total_commodities_count = len(current_commodities)
+
+    # -------------------------------------------------------------
     # Quality Report สำหรับ Agent (Compatible with n8n Webhook & LLM)
     # -------------------------------------------------------------
     total_rows = int(len(flags_df))
     valid_rows = int(flags_df["is_valid"].sum())
     rejected_rows = total_rows - valid_rows
+
+    has_new_commodities = len(new_commodities) > 0
+    severity_level = "HIGH" if rejected_rows / max(total_rows, 1) > 0.1 or int(flags_df["negative_price"].sum()) > 0 else ("MEDIUM" if has_new_commodities else "LOW")
+    human_review = rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0 or has_new_commodities
 
     quality_report = {
         "pipeline": "world_bank_commodity_etl",
@@ -149,6 +161,12 @@ def clean_and_transform(excel_path=DEFAULT_RAW_EXCEL):
         "total_rows": total_rows,
         "valid_rows": valid_rows,
         "rejected_rows": rejected_rows,
+        "commodity_stats": {
+            "total_commodities": total_commodities_count,
+            "expected_commodities": len(known_commodities) if known_commodities else 71,
+            "new_commodities_count": len(new_commodities),
+            "new_commodities": new_commodities
+        },
         "error_breakdown": {
             "is_duplicate": int(flags_df["is_duplicate"].sum()),
             "invalid_date": int(flags_df["invalid_date"].sum()),
@@ -156,10 +174,11 @@ def clean_and_transform(excel_path=DEFAULT_RAW_EXCEL):
             "unknown_group": int(flags_df["unknown_group"].sum()),
             "missing_price": int(flags_df["missing_price"].sum()),
             "negative_price": int(flags_df["negative_price"].sum()),
-            "outlier_price": int(flags_df["outlier_price"].sum())
+            "outlier_price": int(flags_df["outlier_price"].sum()),
+            "new_commodities_detected": len(new_commodities)
         },
-        "severity": "HIGH" if rejected_rows / max(total_rows, 1) > 0.1 or int(flags_df["negative_price"].sum()) > 0 else "LOW",
-        "human_review_required": rejected_rows > 0 or int(flags_df["negative_price"].sum()) > 0,
+        "severity": severity_level,
+        "human_review_required": human_review,
         "safe_to_publish": valid_rows > 0 and int(flags_df["negative_price"].sum()) == 0
     }
 
