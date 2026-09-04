@@ -1,0 +1,245 @@
+{
+  "name": "Airflow-notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quality-report",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        -20
+      ],
+      "id": "648e4c84-75f8-4214-9605-33d2390b164a",
+      "name": "1. Receive Quality Report",
+      "webhookId": "0dfc0ac4-1092-4349-b3a9-33b63103d501"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-human-review",
+              "leftValue": "={{ $json.body.human_review_required ?? $json.human_review_required }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -140,
+        -20
+      ],
+      "id": "6bf9718a-7e44-4912-9b40-4c11fb658886",
+      "name": "2. Human Review Required?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an Executive Data Quality & Incident Responder for an Enterprise ETL Pipeline.\nAnalyze this Data Quality Report and create an executive-ready LINE message in Thai.\n\nQuality Report Data:\n{{ JSON.stringify($json.body || $json) }}\n\nInstructions:\n- Do NOT output JSON syntax, code blocks, or backticks.\n- Use clean formatting, emojis, and clear bullet points.\n- Strictly adhere to this clean structure:\n\n🚨 [DATA PIPELINE INCIDENT REPORT]\n━━━━━━━━━━━━━━━━━━━━\n📊 สรุปสถานะภาพรวม\n• Pipeline: {{ ($json.body || $json).pipeline }}\n• ระดับความรุนแรง: 🔴 HIGH (เร่งด่วน)\n• อัตราข้อมูลผ่านเกณฑ์: {{ Math.round((($json.body || $json).valid_rows / ($json.body || $json).total_rows) * 100) }}% (ผ่าน {{ ($json.body || $json).valid_rows }} / ทั้งหมด {{ ($json.body || $json).total_rows }} แถว)\n• สถานะปัจจุบัน: ⛔ กักกันข้อมูลชั่วคราว (Hold)\n\n🔍 ปัญหาหลักที่พบ (Key Findings):\n1. วันที่ผิดรูปแบบ (Invalid Date) - 2 รายการ\n2. ราคาไม่ใช่ตัวเลข (พบคำว่า FREE) - 1 รายการ\n3. ข้อมูลสูญหายและค่าผิดปกติ (Missing & Outliers)\n\n🛠️ แผนการดำเนินงาน (Action Plan):\n• Data Engineer กำลังตรวจสอบไฟล์ใน Quarantine\n• ปรับปรุง Rule และรอการอนุมัติก่อน Release สู่ Dashboard\n\n👤 ผู้รับผิดชอบ: Data Team On-call"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        100,
+        -200
+      ],
+      "id": "52a2c8f5-5f58-4bb2-85d8-f652f6612fd8",
+      "name": "3. AI Incident Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status-ok",
+              "name": "status",
+              "value": "Pipeline Healthy - No Human Review Required",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        100,
+        140
+      ],
+      "id": "7ef114db-d48b-466f-9d15-4d44b04fbe9c",
+      "name": "Log Success"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -20
+      ],
+      "id": "a7058b38-118c-4b8b-9375-648412565bdf",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SMwntFmwO1jCGCiE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/broadcast",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ga0ByhN4g9zy3vEd1Zx4ZagLuk/QJyYMju3LJdpDBpCv0owDelFP/Cz/cqBQSSXQ7C6yB+75JOLRss/72tInjEmEiVFoo8mhrxg/HGasCpotN6U/qAiW/tEKrwQQtnIG9zJt0Hh6USwooXaVOJnwoQdB04t89/1O/w1cDnyilFU="
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"messages\": [{ \"type\": \"text\", \"text\": $json.text }] }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        -20
+      ],
+      "id": "1813db73-7a80-47e0-9306-7a459769c02a",
+      "name": "LINE API"
+    }
+  ],
+  "pinData": {
+    "1. Receive Quality Report": [
+      {
+        "json": {
+          "headers": {
+            "host": "profound-casual-oyster.ngrok-free.app",
+            "user-agent": "python-requests/2.34.2",
+            "content-length": "403",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "content-type": "application/json",
+            "x-forwarded-for": "171.97.98.211",
+            "x-forwarded-host": "profound-casual-oyster.ngrok-free.app",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "pipeline": "sales_weather_etl_pipeline",
+            "execution_time": "2026-08-30T04:55:03.007490",
+            "total_rows": 12,
+            "valid_rows": 4,
+            "rejected_rows": 8,
+            "error_breakdown": {
+              "is_duplicate": 1,
+              "invalid_date": 2,
+              "missing_product": 1,
+              "unknown_product": 0,
+              "missing_qty": 1,
+              "negative_qty": 1,
+              "non_numeric_price": 1,
+              "outlier_qty": 1
+            },
+            "severity": "HIGH",
+            "human_review_required": true,
+            "safe_to_publish": true
+          },
+          "webhookUrl": "https://profound-casual-oyster.ngrok-free.app/webhook-test/quality-report",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "1. Receive Quality Report": {
+      "main": [
+        [
+          {
+            "node": "2. Human Review Required?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Human Review Required?": {
+      "main": [
+        [
+          {
+            "node": "3. AI Incident Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "3. AI Incident Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. AI Incident Agent": {
+      "main": [
+        [
+          {
+            "node": "LINE API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d5ff8cf0-8f2c-4f21-bfe3-551e4628b737",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d8cf84f95b67cfdcd7dabce9b16a7cb7246cceb12ff3c5d9394f23632c39520"
+  },
+  "id": "wECIZFqp2Y7h5hMF",
+  "tags": []
+}

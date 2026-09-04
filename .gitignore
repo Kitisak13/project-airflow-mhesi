@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data files (Explicitly excluded as per requirements)
+data/
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.parquet
+*.json.gz
+*.zip
+*.tar.gz
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environments & secrets
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Logs & temp files
+*.log
+/tmp/
