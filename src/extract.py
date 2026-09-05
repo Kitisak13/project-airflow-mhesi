@@ -1,6 +1,6 @@
 """
 Module: extract.py
-Description: Web scraper for World Bank Commodity Markets page to download latest Monthly Prices ("Pink Sheet") Excel file.
+Description: ทำ Web scraper for World Bank Commodity Markets page เพื่อ download ไฟล์ Monthly Prices ("Pink Sheet") Excel file.
 """
 
 import os
@@ -20,7 +20,7 @@ FALLBACK_EXCEL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__
 
 def get_monthly_prices_url(page_url=TARGET_URL):
     """
-    Scrapes the World Bank Commodity Markets page to extract the latest Monthly Prices Excel link.
+    Scrapes the World Bank Commodity Markets page เพื่อ extract ไฟล์ Monthly Prices Excel link.
     """
     logger.info(f"Navigating to Target URL: {page_url}")
     headers = {
