@@ -27,3 +27,5 @@ ENV/
 # Logs & temp files
 *.log
 /tmp/
+~$*
+
