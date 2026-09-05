@@ -13,6 +13,7 @@ data/
 *.json.gz
 *.zip
 *.tar.gz
+*.pptx
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
